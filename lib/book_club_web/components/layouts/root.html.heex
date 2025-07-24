@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="BookClub" suffix=" · Phoenix Framework">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        setTheme(localStorage.getItem("phx:theme") || "system");
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        window.addEventListener("phx:set-theme", ({ detail: { theme } }) => setTheme(theme));
+      })();
+    </script>
+  </head>
+  <body class="bg-gradient-to-r from-purple-50 to-blue-50">
+    <!-- Enhanced Navigation Bar -->
+    <header class="bg-white shadow-md">
+      <nav class="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <a href="/" class="text-2xl font-bold text-indigo-700">BookClub</a>
+        </div>
+        
+        <!-- Main Navigation Links -->
+        <div class="flex space-x-6 items-center">
+          <a href="/" class="text-gray-700 hover:text-indigo-700 font-medium">Home</a>
+          <a href="/books" class="text-gray-700 hover:text-indigo-700 font-medium">Books</a>
+          <a href="/reading_lists" class="text-gray-700 hover:text-indigo-700 font-medium">Reading Lists</a>
+          <a href="/reviews" class="text-gray-700 hover:text-indigo-700 font-medium">Reviews</a>
+          
+          <!-- User Authentication Links -->
+          <%= if @current_scope do %>
+            <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
+              <%= @current_scope.user.email %>
+            </span>
+            <a href={~p"/users/settings"} class="text-gray-700 hover:text-indigo-700 font-medium">Settings</a>
+            <a href={~p"/users/log-out"} class="text-red-600 hover:text-red-800 font-medium" data-method="delete">Log out</a>
+          <% else %>
+            <a href={~p"/users/register"} class="text-gray-700 hover:text-indigo-700 font-medium">Register</a>
+            <a href={~p"/users/log-in"} class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg">Log in</a>
+          <% end %>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+      {@inner_content}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-white mt-12 py-6 border-t">
+      <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+        &copy; <%= DateTime.utc_now().year %> BookClub. Built with Phoenix Framework.
+      </div>
+    </footer>
+  </body>
+</html>

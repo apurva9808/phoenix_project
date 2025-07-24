@@ -1,0 +1,105 @@
+defmodule BookClubWeb.ReviewLive.Form do
+  use BookClubWeb, :live_view
+
+  alias BookClub.Reviews
+  alias BookClub.Reviews.Review
+  alias BookClub.Catalog
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <.header>
+        {@page_title}
+        <:subtitle>Use this form to manage review records in your database.</:subtitle>
+      </.header>
+
+      <.form for={@form} id="review-form" phx-change="validate" phx-submit="save">
+        <.input field={@form[:book_id]} type="select" options={@book_options} label="Book" />
+        <.input field={@form[:rating]} type="number" label="Rating" />
+        <.input field={@form[:content]} type="textarea" label="Content" />
+        <footer>
+          <.button phx-disable-with="Saving..." variant="primary">Save Review</.button>
+          <.button navigate={return_path(@current_scope, @return_to, @review)}>Cancel</.button>
+        </footer>
+      </.form>
+    </Layouts.app>
+    """
+  end
+
+  @impl true
+  def mount(params, _session, socket) do
+    # Hardcode book options instead of fetching from DB
+    book_options = [{"2 states", 1}]
+    
+    {:ok,
+     socket
+     |> assign(:book_options, book_options)
+     |> assign(:return_to, return_to(params["return_to"]))
+     |> apply_action(socket.assigns.live_action, params)}
+  end
+
+  defp return_to("show"), do: "show"
+  defp return_to(_), do: "index"
+
+  defp apply_action(socket, :edit, %{"id" => id}) do
+    review = Reviews.get_review!(socket.assigns.current_scope, id)
+
+    socket
+    |> assign(:page_title, "Edit Review")
+    |> assign(:review, review)
+    |> assign(:form, to_form(Reviews.change_review(socket.assigns.current_scope, review)))
+  end
+
+  defp apply_action(socket, :new, _params) do
+    review = %Review{user_id: socket.assigns.current_scope.user.id}
+
+    socket
+    |> assign(:page_title, "New Review")
+    |> assign(:review, review)
+    |> assign(:form, to_form(Reviews.change_review(socket.assigns.current_scope, review)))
+  end
+
+  @impl true
+  def handle_event("validate", %{"review" => review_params}, socket) do
+    changeset = Reviews.change_review(socket.assigns.current_scope, socket.assigns.review, review_params)
+    {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
+  end
+
+  def handle_event("save", %{"review" => review_params}, socket) do
+    save_review(socket, socket.assigns.live_action, review_params)
+  end
+
+  defp save_review(socket, :edit, review_params) do
+    case Reviews.update_review(socket.assigns.current_scope, socket.assigns.review, review_params) do
+      {:ok, review} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Review updated successfully")
+         |> push_navigate(
+           to: return_path(socket.assigns.current_scope, socket.assigns.return_to, review)
+         )}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  defp save_review(socket, :new, review_params) do
+    case Reviews.create_review(socket.assigns.current_scope, review_params) do
+      {:ok, review} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Review created successfully")
+         |> push_navigate(
+           to: return_path(socket.assigns.current_scope, socket.assigns.return_to, review)
+         )}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  defp return_path(_scope, "index", _review), do: ~p"/reviews"
+  defp return_path(_scope, "show", review), do: ~p"/reviews/#{review}"
+end
